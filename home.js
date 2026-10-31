@@ -286,29 +286,42 @@ function initTestimonialSwiper() {
   const swiperContainer = document.querySelector('.testimonial-swiper');
   if (!swiperContainer) return;
 
-  const containerWidth = window.innerWidth;
-  const calculatedOffset = (containerWidth / 4) + 10;
-
-  const wrapper = swiperContainer.querySelector('.swiper-wrapper');
-  if (wrapper) {
-    wrapper.style.paddingLeft = calculatedOffset + 'px';
-  }
-
-  const formatNumber = (num) => String(num).padStart(2, '0');
   const slideElements = swiperContainer.querySelectorAll('.swiper-slide');
   const totalSlides = slideElements.length;
+  const formatNumber = (num) => String(num).padStart(2, '0');
+
+  const getOffset = (width) => {
+    if (width < 768) return 0;
+    return (width / 4) + 10;
+  };
+
+  const getOffsetAfter = (width, slideWidth) => {
+    if (width < 768) return 0;
+    const offsetBefore = getOffset(width);
+    const remainingSpace = width - offsetBefore - slideWidth;
+    return remainingSpace > 0 ? remainingSpace : 0;
+  };
+
+  const currentWidth = window.innerWidth;
+  const sampleSlideWidth = slideElements[0] ? slideElements[0].offsetWidth : 0;
 
   const swiper = new Swiper('.testimonial-swiper', {
-    loop: true,
+    loop: false,
     grabCursor: true,
+    slidesOffsetBefore: getOffset(currentWidth),
+    slidesOffsetAfter: getOffsetAfter(currentWidth, sampleSlideWidth),
     breakpoints: {
       768: {
         slidesPerView: 1,
-        spaceBetween: 48
+        spaceBetween: 48,
+        slidesOffsetBefore: getOffset(window.innerWidth),
+        slidesOffsetAfter: getOffsetAfter(window.innerWidth, slideElements[0] ? slideElements[0].offsetWidth : 0)
       },
       992: {
         slidesPerView: 'auto',
-        spaceBetween: 80
+        spaceBetween: 80,
+        slidesOffsetBefore: getOffset(window.innerWidth),
+        slidesOffsetAfter: getOffsetAfter(window.innerWidth, slideElements[0] ? slideElements[0].offsetWidth : 0)
       }
     },
     navigation: {
@@ -327,6 +340,14 @@ function initTestimonialSwiper() {
         if (currentEl) currentEl.textContent = formatNumber(s.realIndex + 1);
       }
     }
+  });
+
+  window.addEventListener('resize', () => {
+    const w = window.innerWidth;
+    const sWidth = slideElements[0] ? slideElements[0].offsetWidth : 0;
+    swiper.params.slidesOffsetBefore = getOffset(w);
+    swiper.params.slidesOffsetAfter = getOffsetAfter(w, sWidth);
+    swiper.update();
   });
 }
 

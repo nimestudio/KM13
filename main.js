@@ -22,11 +22,14 @@ function mobileMenu() {
     };
 
     const unlockScroll = () => {
+      const savedScrollY = scrollY;
       Object.assign(document.body.style, {
         position: "", top: "", left: "", right: "", width: ""
       });
       document.documentElement.style.overflow = "";
-      window.scrollTo(0, scrollY);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedScrollY);
+      });
     };
 
     const show = () => {
@@ -72,20 +75,20 @@ function mobileMenu() {
 
     menu.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", () => {
-      if (!open) return;
-      if (link.getAttribute("href").startsWith("#")) {
-        unlockScroll();
-        open = false;
-        hide();
-      }
+        if (!open) return;
+        if (link.getAttribute("href").startsWith("#")) {
+          unlockScroll();
+          open = false;
+          hide();
+        }
+      });
     });
-});
 
-window.addEventListener("transitionCovered", closeInstant);
+    window.addEventListener("transitionCovered", closeInstant);
 
-window.addEventListener("pageshow", (e) => {
-  if (e.persisted && open) closeInstant();
-});
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted && open) closeInstant();
+    });
 
     return () => {
       if (tl) tl.kill();
