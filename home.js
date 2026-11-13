@@ -1,4 +1,29 @@
-function heroSlider() {
+function heroLoad() {
+  const overlay = document.querySelector(".hero-reveal-overlay");
+  if (!overlay) return;
+
+  gsap.set(".hero-logo-wrap", { yPercent: -20, opacity: 0 });
+  gsap.set(".nav-wrap.home-mobile", { yPercent: -100, opacity: 0 });
+  gsap.set(".hero-slider-step", { yPercent: 180, scale: 0.5, opacity: 0 });
+  gsap.set(".hero-slider-image-wrap", { scale: 0 });
+  gsap.set(".hero-slider-step-texts", { yPercent: 20, opacity: 0 });
+  gsap.set(".hero-slider-nav", { y: -10, opacity: 0 });
+
+  gsap.timeline()
+    .to(overlay, { autoAlpha: 0, duration: 2, ease: "power1.inOut" }, 0)
+    .to(".hero-logo-wrap", { yPercent: 0, duration: 1, ease: "power2.out" }, 1.5)
+    .to(".hero-logo-wrap", { opacity: 1, duration: 1.5, ease: "power1.out" }, 1.5)
+    .to(".nav-wrap.home-mobile", { yPercent: 0, opacity: 1, duration: 1.5, ease: "power2.out" }, 1.6)
+    .to(".nav-wrap.home-mobile", { opacity: 1, duration: 1.3, ease: "none" }, 1.8)
+    .to(".hero-slider-step", { yPercent: 0, scale: 1, duration: 1.4, ease: "power3.out" }, 1.8)
+    .to(".hero-slider-step", { opacity: 1, duration: 0.7, ease: "power1.out" }, 1.8)
+    .to(".hero-slider-image-wrap", { scale: 1, duration: 1, ease: "power2.out" }, 2.2)
+    .to(".hero-slider-step-texts", { yPercent: 0, duration: 1, ease: "power2.inOut" }, 2.2)
+    .to(".hero-slider-step-texts", { opacity: 1, duration: 0.8, ease: "none" }, 2.5)
+    .to(".hero-slider-nav", { y: 0, opacity: 1, duration: 1.2, ease: "power2.out" }, 2.8);
+}
+
+function heroSlider(lenisInstance) {
   const slider = document.querySelector(".hero-slider");
   if (!slider) return;
 
@@ -11,25 +36,77 @@ function heroSlider() {
   let current = -1;
   let finished = false;
 
+  const scrollToTarget = () => {
+    if (!target) return;
+    const navHeight = window.innerWidth <= 767 ? 52 : 64;
+    const targetPosition = Math.round(target.getBoundingClientRect().top + window.pageYOffset - navHeight);
+
+    const activeLenis = lenisInstance || window.lenis;
+
+    if (activeLenis) {
+      activeLenis.scrollTo(targetPosition, {
+        duration: 1,
+        force: true
+      });
+    } else {
+      window.scrollTo({ top: targetPosition, behavior: "smooth" });
+    }
+  };
+
   gsap.set(videos, { opacity: 0 });
-  gsap.set(steps, { opacity: 0 });
+
+  const stepData = steps.map((step) => {
+    const textItems = [...step.querySelectorAll(".hero-slider-step-text")];
+    const imageItems = [...step.querySelectorAll(".hero-slider-image")];
+    
+    gsap.set(textItems, { opacity: 0, y: "20%" });
+    gsap.set(imageItems, { opacity: 0, y: "10%" });
+    return { textItems, imageItems };
+  });
 
   const goTo = (index) => {
     const prev = current;
     current = index;
 
     videos.forEach((v, i) => {
-      gsap.to(v, { opacity: i === index ? 1 : 0, duration: 0.5 });
+      gsap.to(v, { opacity: i === index ? 1 : 0, duration: 1.5, ease: "none" });
       if (i === index) {
         v.currentTime = 0;
-        v.play();
-      } else if (i === prev) {
-        gsap.delayedCall(0.5, () => v.pause());
+        v.play().catch(() => {});
+      } else if (i === prev && prev > -1) {
+        gsap.delayedCall(1.5, () => v.pause());
       }
       if (i === index + 1) v.load();
     });
 
-    steps.forEach((s, i) => gsap.to(s, { opacity: i === index ? 1 : 0, duration: 0.5 }));
+    stepData.forEach((data) => {
+      data.textItems.forEach((textEl, itemIdx) => {
+        gsap.killTweensOf(textEl);
+
+        if (itemIdx === index) {
+          gsap.fromTo(textEl, { y: "20%" }, { y: "0%", duration: 1, ease: "power2.inOut" });
+          gsap.fromTo(textEl, { opacity: 0 }, { opacity: 1, duration: 1, ease: "power2.in" });
+        } else if (itemIdx === prev && prev > -1) {
+          gsap.to(textEl, { y: "-20%", duration: 1, ease: "power2.inOut", onComplete: () => gsap.set(textEl, { y: "30%" }) });
+          gsap.to(textEl, { opacity: 0, duration: 0.8 });
+        } else if (prev === -1 && itemIdx !== index) {
+          gsap.set(textEl, { opacity: 0, y: "20%" });
+        }
+      });
+
+      data.imageItems.forEach((imgEl, itemIdx) => {
+        gsap.killTweensOf(imgEl);
+
+        if (itemIdx === index) {
+          gsap.fromTo(imgEl, { opacity: 0, y: "10%" }, { opacity: 1, y: "0%", duration: 0.8, ease: "power2.inOut" });
+        } else if (itemIdx === prev && prev > -1) {
+          gsap.to(imgEl, { opacity: 0, y: "-10%", duration: 0.8, ease: "power2.inOut", onComplete: () => gsap.set(imgEl, { y: "15%" }) });
+        } else if (prev === -1 && itemIdx !== index) {
+          gsap.set(imgEl, { opacity: 0, y: "10%" });
+        }
+      });
+    });
+
     dynamics.forEach((d, i) => {
       if (i < index) d.style.width = "100%";
       else if (i > index) d.style.width = "0%";
@@ -48,7 +125,7 @@ function heroSlider() {
       if (i === videos.length - 1) {
         finished = true;
         dynamics[i].style.width = "100%";
-        if (target) target.scrollIntoView({ behavior: "smooth" });
+        scrollToTarget();
       } else {
         goTo(i + 1);
       }
@@ -62,13 +139,25 @@ function heroSlider() {
     })
   );
 
+  const activeLenis = lenisInstance || window.lenis;
+  if (activeLenis) {
+    activeLenis.on('scroll', ({ scroll, direction }) => {
+      if (finished && direction === -1 && scroll < slider.offsetHeight) {
+        finished = false;
+        current = -1;
+        goTo(0);
+      }
+    });
+  }
+
   new IntersectionObserver(([entry]) => {
     if (entry.isIntersecting) {
       if (finished) {
         finished = false;
+        current = -1;
         goTo(0);
       } else if (current > -1) {
-        videos[current].play();
+        videos[current].play().catch(() => {});
       }
     } else {
       videos.forEach((v) => v.pause());
@@ -78,18 +167,17 @@ function heroSlider() {
   goTo(0);
 
   slider.addEventListener("click", (e) => {
-  if (e.target.closest(".hero-slider-nav-step")) return;
-  if (target) target.scrollIntoView({ behavior: "smooth" });
-});
-
+    if (e.target.closest(".hero-slider-nav-step")) return;
+    scrollToTarget();
+  });
 }
-
+  
 function floatingButtons() {
   gsap.matchMedia().add("(hover: hover)", () => {
     document.querySelectorAll(".floating-hero, .floating-gallery, .floating-close-gallery").forEach((btn) => {
       gsap.set(btn, { opacity: 0, xPercent: -50, yPercent: -50 });
-      const xTo = gsap.quickTo(btn, "x", { duration: 0.4, ease: "power3" });
-      const yTo = gsap.quickTo(btn, "y", { duration: 0.4, ease: "power3" });
+      const xTo = gsap.quickTo(btn, "x", { duration: 1.0, ease: "power3" });
+      const yTo = gsap.quickTo(btn, "y", { duration: 1.0, ease: "power3" });
 
       document.addEventListener("mousemove", (e) => {
         xTo(e.clientX);
@@ -153,103 +241,156 @@ function navSwap() {
   gsap.matchMedia().add("(max-width: 767px)", () => {
     const logoWrap = document.querySelector(".nav-logo-wrap");
     const textWrap = document.querySelector(".nav-text-wrap");
-    if (!logoWrap || !textWrap) return;
+    const hero = document.querySelector(".section-home-hero");
+    if (!logoWrap || !textWrap || !hero) return;
 
-    const st = {
-      trigger: ".section-home-hero",
-      start: "bottom 20%",
-      end: "bottom top",
-      scrub: true,
+    let heroInView = false;
+    const stickyNavWrap = document.querySelector(".nav-wrap");
+    let menuOpen = stickyNavWrap?.classList.contains("nav-open") ?? false;
+    const updateNav = () => {
+      const showText = heroInView && !menuOpen;
+      gsap.to(logoWrap, { opacity: showText ? 0 : 1, duration: 0.5, overwrite: true });
+      gsap.to(textWrap, { opacity: showText ? 1 : 0, duration: 0.5, overwrite: true });
     };
+    const observer = new IntersectionObserver(([entry]) => {
+      heroInView = entry.isIntersecting;
+      updateNav();
+    });
+    const menuObserver = stickyNavWrap && new MutationObserver(() => {
+      menuOpen = stickyNavWrap.classList.contains("nav-open");
+      updateNav();
+    });
 
-    gsap.fromTo(logoWrap, { opacity: 0 }, { opacity: 1, ease: "none", scrollTrigger: st });
-    gsap.fromTo(textWrap, { opacity: 1 }, { opacity: 0, ease: "none", scrollTrigger: st });
+    observer.observe(hero);
+    menuObserver?.observe(stickyNavWrap, { attributes: true, attributeFilter: ["class"] });
+
+    return () => {
+      observer.disconnect();
+      menuObserver?.disconnect();
+      gsap.killTweensOf([logoWrap, textWrap]);
+    };
   });
 }
 
 function heroScrollAway() {
+  const logoWrap = document.querySelector(".hero-logo-wrap");
   const logoDesktop = document.querySelector(".hero-logo-desktop");
   const logoMobile = document.querySelector(".hero-logo-mobile");
-  const steps = document.querySelectorAll(".hero-slider-steps");
-  const nav = document.querySelector(".hero-slider-nav");
+  const steps = document.querySelector(".hero-slider-step");
+  const sliderNav = document.querySelector(".hero-slider-nav");
+
   if (!logoDesktop || !logoMobile) return;
 
+  const logoRestWidth = (logo) => {
+    const parent = logo.parentElement;
+    const cs = getComputedStyle(parent);
+    return parent.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  };
+
+  gsap.fromTo(logoDesktop,
+    { width: () => logoRestWidth(logoDesktop) },
+    {
+      width: 188,
+      ease: "none",
+      immediateRender: false,
+      scrollTrigger: {
+        trigger: ".section-home-hero",
+        start: "bottom 99%",
+        end: "bottom 55%",
+        scrub: 1,
+        invalidateOnRefresh: true
+      }
+    }
+  );
+
   gsap.to(logoDesktop, {
-    width: 188,
+    y: "-150%",
     ease: "none",
     scrollTrigger: {
       trigger: ".section-home-hero",
-      start: "top top",
-      end: "bottom 50%",
-      scrub: true,
-    },
+      start: "bottom 65%",
+      end: "bottom 30%",
+      scrub: 1,
+    }
   });
 
-  gsap.to(logoDesktop, {
-    y: -4,
-    ease: "none",
-    scrollTrigger: {
-      trigger: ".section-home-hero",
-      start: "top top",
-      end: "bottom 50%",
-      scrub: true,
-    },
-  });
-
-  gsap.to(logoDesktop, {
-    opacity: 0,
-    ease: "none",
-    scrollTrigger: {
-      trigger: ".section-home-hero",
-      start: "bottom -10%",
-      end: "bottom -10%",
-      scrub: true,
-    },
-  });
-
+  gsap.fromTo(logoMobile,
+    { width: () => logoRestWidth(logoMobile) },
+    {
+      width: 82,
+      ease: "none",
+      immediateRender: false,
+      scrollTrigger: {
+        trigger: ".section-home-hero",
+        start: "bottom 80%",
+        end: "bottom 50%",
+        scrub: 1,
+        invalidateOnRefresh: true
+      }
+    }
+  );
+  
   gsap.to(logoMobile, {
-    width: 82,
+    y: "-150%",
     ease: "none",
     scrollTrigger: {
       trigger: ".section-home-hero",
-      start: "top top",
-      end: "bottom 90%",
-      scrub: true,
-    },
+      start: "bottom 70%",
+      end: "bottom 45%",
+      scrub: 1,
+    }
   });
 
-  gsap.to(logoMobile, {
-    opacity: 0,
-    ease: "none",
-    scrollTrigger: {
-      trigger: ".section-home-hero",
-      start: "bottom 80%",
-      end: "bottom 50%",
-      scrub: true,
-    },
-  });
+  if (logoWrap) {
+    gsap.fromTo(logoWrap,
+      { autoAlpha: 1 },
+      {
+        autoAlpha: 0,
+        ease: "none",
+        immediateRender: false,
+        scrollTrigger: {
+          trigger: ".section-home-hero",
+          start: "bottom 1%",
+          end: "bottom top",
+          scrub: 1
+        }
+      }
+    );
+  }
 
-  gsap.to(steps, {
-    opacity: 0,
-    ease: "none",
-    scrollTrigger: {
-      trigger: ".section-home-hero",
-      start: "bottom 80%",
-      end: "bottom 50%",
-      scrub: true,
-    },
-  });
+  if (steps) {
+    gsap.fromTo(steps,
+      { opacity: 1 },
+      {
+        opacity: 0,
+        ease: "none",
+        immediateRender: false,
+        scrollTrigger: {
+          trigger: ".section-home-hero",
+          start: "bottom 80%",
+          end: "bottom 40%",
+          scrub: 1
+        }
+      }
+    );
+  }
 
-  gsap.to(nav, {
-    opacity: 0,
-    ease: "none",
-    scrollTrigger: {
-      trigger: ".section-home-hero",
-      start: "bottom 80%",
-      end: "bottom 50%",
-      scrub: true,
-    },
-  });
+  if (sliderNav) {
+    gsap.fromTo(sliderNav,
+      { opacity: 1 },
+      {
+        opacity: 0,
+        ease: "none",
+        immediateRender: false,
+        scrollTrigger: {
+          trigger: ".section-home-hero",
+          start: "bottom 80%",
+          end: "bottom 40%",
+          scrub: 1
+        }
+      }
+    );
+  }
 }
 
 function faqAccordion() {
@@ -308,6 +449,7 @@ function initTestimonialSwiper() {
   const swiper = new Swiper('.testimonial-swiper', {
     loop: false,
     grabCursor: true,
+    speed: 1000,
     slidesOffsetBefore: getOffset(currentWidth),
     slidesOffsetAfter: getOffsetAfter(currentWidth, sampleSlideWidth),
     breakpoints: {
@@ -352,22 +494,25 @@ function initTestimonialSwiper() {
 }
 
 function galleryTrigger() {
-  if (window.matchMedia("(hover: hover)").matches) {
-    document.querySelectorAll(".gallery-block").forEach((block) => {
-      const lightbox = block.querySelector(".gallery-thumbnails");
-      if (lightbox) {
-        block.addEventListener("click", () => lightbox.click());
-      }
-    });
-  } else {
-    document.querySelectorAll(".gallery-trigger").forEach((trigger) => {
-      const lightbox = trigger.querySelector(".gallery-thumbnails");
-      const btn = trigger.querySelector(".button");
-      if (lightbox && btn) {
-        btn.addEventListener("click", () => lightbox.click());
-      }
-    });
-  }
+  const isHover = window.matchMedia("(hover: hover)").matches;
+
+  document.querySelectorAll(".gallery-block").forEach((block) => {
+    const lightbox = block.querySelector(".gallery-thumbnails");
+    if (!lightbox) return;
+
+    if (isHover) {
+      block.addEventListener("click", () => {
+        lightbox.click();
+      });
+    } else {
+      block.querySelectorAll(".button").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          lightbox.click();
+        });
+      });
+    }
+  });
 }
 
 function backgroundColors() {
@@ -391,6 +536,7 @@ function backgroundColors() {
 }
 
 const initHome = () => {
+  heroLoad();
   heroSlider();
   floatingButtons();
   navSwap();

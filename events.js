@@ -1,6 +1,6 @@
 function backgroundColors() {
   const sections = [
-    [".section-events-particulares", "--color--green", "--color--white", "top bottom"],
+    [".section-events-particulares", "--color--green", "--color--white", "top 75%"],
     [".section-events-empresa", "--color--orange", "--color--white"],
     [".section-events-faq", "--color--background"],
   ];
